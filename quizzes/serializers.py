@@ -35,7 +35,6 @@ class QuizSerializer(serializers.ModelSerializer):
         quiz.title = data['title']
         quiz.description = data['description']
         quiz.category = data['category']
-        quiz.save()
 
         # Create question set
         for q in data['questions']:

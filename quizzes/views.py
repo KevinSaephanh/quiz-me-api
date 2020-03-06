@@ -1,40 +1,21 @@
 from django.shortcuts import render
 
-from rest_framework import permissions, generics, status, viewsets, pagination
+from rest_framework import permissions, status, viewsets, pagination
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.throttling import UserRateThrottle
 
 from .models import Category, Quiz, Vote
 from .serializers import QuizSerializer, VoteSerializer, CategorySerializer
 from rest_framework.response import Response
+from quiz_me.permissions import IsOwnerOrReadOnly
 
 
-class QuizViewSet(viewsets.ModelViewSet):
-    queryset = Quiz.objects.all().order_by('-created_at')
-    serializer_class = QuizSerializer
-    permission_class = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = pagination.PageNumberPagination
+class TenPerDayUserThrottle(UserRateThrottle):
+    rate = '10/day'
 
-    def create(self, request):
-        serializer = QuizSerializer.create(request)
-        if serializer.is_valid():
-            quiz = serializer.create(request)
-            if quiz:
-                return Response(status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    def update(self, request):
-        valid_question_set = QuizSerializer.check_question_set_size(request)
-        if valid_question_set is True:
-            super().update(request)
-            return Response(status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    def partial_update(self, request):
-        valid_question_set = QuizSerializer.check_question_set_size(request)
-        if valid_question_set is True:
-            super().partial_update(request)
-            return Response(status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+class OncePerDayUserThrottle(UserRateThrottle):
+    rate = '1/day'
 
 
 class VoteViewSet(viewsets.ModelViewSet):
@@ -51,40 +32,80 @@ class CategoryViewSet(viewsets.ModelViewSet):
     pagination_class = pagination.PageNumberPagination
 
 
+# Find quiz by pk
+def get_quiz_object(pk):
+    try:
+        return Quiz.objects.get(pk=pk)
+    except Quiz.DoesNotExist:
+        raise Exception('Quiz does not exist')
+
+
+# Create a quiz
 @api_view(['POST'])
 @permission_classes((permissions.IsAuthenticated, ))
-def post(request):
+@throttle_classes([OncePerDayUserThrottle])
+def create_quiz(request):
     if request.method == 'POST':
         serializer = QuizSerializer.create(request)
         if serializer.is_valid():
+            serializer.save()
             return Response(status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
+# Get all quizzes
 @api_view(['GET'])
 @permission_classes((permissions.AllowAny, ))
-def list(request, page):
+def quiz_list(request, page):
     try:
         queryset = Quiz.objects.all().order_by('-created_at')
     except Quiz.DoesNotExist:
-        return Response({'error': 'No quizzes found for category'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'No quizzes found'}, status=status.HTTP_404_NOT_FOUND)
 
+    # Set up pagination for quizzes
+    paginator = pagination.PageNumberPagination()
+    paginator.page_size = 10
+    paginator.page = page
+
+    # Create paginated quiz list
+    paginated_quizzes = paginator.paginate_queryset(queryset, request)
+    serializer = QuizSerializer(paginated_quizzes, many=True)
+    if serializer.is_valid():
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+# Get quiz by primary key
+@api_view(['GET'])
+@permission_classes((permissions.AllowAny, ))
+def get_quiz(request, pk):
     if request.method == 'GET':
-        # Set up pagination for quizzes
-        paginator = pagination.PageNumberPagination()
-        paginator.page_size = 10
-        paginator.page = page
-
-        # Create paginated quiz list
-        paginated_quizzes = paginator.paginate_queryset(queryset, request)
-        serializer = QuizSerializer(paginated_quizzes, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data)
+        quiz = get_quiz_object(pk)
+        if quiz is not None:
+            return Response(quiz, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_404_NOT_FOUND)
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
+# Update or delete quiz by primary key
+@api_view(['PUT', 'DELETE'])
+@permission_classes((IsOwnerOrReadyOnly, permissions.IsAdminUser))
+@throttle_classes([OncePerDayUserThrottle])
+def update_delete_quiz(request, pk):
+    quiz = get_quiz_object(pk)
+    if quiz is not None:
+        if request.method == 'PUT':
+            serializer = QuizSerializer(quiz, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(quiz, status=status.HTTP_200_OK)
+        elif request.method == 'DELETE':
+            quiz.delete()
+            return Response(status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+# Get all quizzes by category name
 @api_view(['GET'])
 @permission_classes((permissions.AllowAny, ))
 def get_quizzes_by_category(request, category_name, page):
@@ -96,16 +117,14 @@ def get_quizzes_by_category(request, category_name, page):
     except Quiz.DoesNotExist:
         return Response({'error': 'No quizzes found for category'}, status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'GET':
-        # Set up pagination for quizzes
-        paginator = pagination.PageNumberPagination()
-        paginator.page_size = 10
-        paginator.page = page
+    # Set up pagination for quizzes
+    paginator = pagination.PageNumberPagination()
+    paginator.page_size = 10
+    paginator.page = page
 
-        # Create paginated quiz list
-        paginated_quizzes = paginator.paginate_queryset(quiz_list, request)
-        serializer = QuizSerializer(paginated_quizzes, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-    return Response(status=status.HTTP_400_BAD_REQUEST)
+    # Create paginated quiz list
+    paginated_quizzes = paginator.paginate_queryset(quiz_list, request)
+    serializer = QuizSerializer(paginated_quizzes, many=True)
+    if serializer.is_valid():
+        return Response(serializer.data)
+    return Response(status=status.HTTP_404_NOT_FOUND)

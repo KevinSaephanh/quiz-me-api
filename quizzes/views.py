@@ -2,20 +2,11 @@ from django.shortcuts import render
 
 from rest_framework import permissions, status, viewsets, pagination
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.throttling import UserRateThrottle
 
 from .models import Category, Quiz, Vote
 from .serializers import QuizSerializer, VoteSerializer, CategorySerializer
 from rest_framework.response import Response
 from quiz_me.permissions import IsOwnerOrReadOnly
-
-
-class TenPerDayUserThrottle(UserRateThrottle):
-    rate = '10/day'
-
-
-class OncePerDayUserThrottle(UserRateThrottle):
-    rate = '1/day'
 
 
 class VoteViewSet(viewsets.ModelViewSet):
@@ -43,13 +34,11 @@ def get_quiz_object(pk):
 # Create a quiz
 @api_view(['POST'])
 @permission_classes((permissions.IsAuthenticated, ))
-@throttle_classes([OncePerDayUserThrottle])
 def create_quiz(request):
-    if request.method == 'POST':
-        serializer = QuizSerializer.create(request)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(status=status.HTTP_201_CREATED)
+    serializer = QuizSerializer.create(request)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(status=status.HTTP_201_CREATED)
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -70,7 +59,7 @@ def quiz_list(request, page):
     # Create paginated quiz list
     paginated_quizzes = paginator.paginate_queryset(queryset, request)
     serializer = QuizSerializer(paginated_quizzes, many=True)
-    if serializer.is_valid():
+    if serializer is not None:
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response(status=status.HTTP_404_NOT_FOUND)
 
@@ -79,18 +68,15 @@ def quiz_list(request, page):
 @api_view(['GET'])
 @permission_classes((permissions.AllowAny, ))
 def get_quiz(request, pk):
-    if request.method == 'GET':
-        quiz = get_quiz_object(pk)
-        if quiz is not None:
-            return Response(quiz, status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-    return Response(status=status.HTTP_400_BAD_REQUEST)
+    quiz = get_quiz_object(pk)
+    if quiz is not None:
+        return Response(quiz, status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 # Update or delete quiz by primary key
 @api_view(['PUT', 'DELETE'])
-@permission_classes((IsOwnerOrReadyOnly, permissions.IsAdminUser))
-@throttle_classes([OncePerDayUserThrottle])
+@permission_classes((IsOwnerOrReadOnly, permissions.IsAdminUser))
 def update_delete_quiz(request, pk):
     quiz = get_quiz_object(pk)
     if quiz is not None:

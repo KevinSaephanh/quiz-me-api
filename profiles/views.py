@@ -1,5 +1,6 @@
 from django.shortcuts import render
-from rest_framework import permissions, response, status, viewsets, generics, views
+from rest_framework import permissions, status, pagination
+from rest_framework.decorators import permission_classes
 from .models import Profile
 from .serializers import ProfileSerializer
 from quiz_me.permissions import IsOwnerOrReadOnly
@@ -7,63 +8,66 @@ from django.contrib.auth.models import User
 from requests.models import Response
 
 
-class ProfileListView(views.APIView):
-    permission_classes = [permissions.AllowAny, ]
+# Find profile using username
+def get_profile_object(username):
+    try:
+        user = User.objects.get(username=username)
+        return Profile.objects.get(user=user)
+    except Profile.DoesNotExist:
+        raise Exception('Profile does not exist')
 
-    def get(self, request, format=None):
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAdminUser])
+def profile_list(request, page):
+    try:
         queryset = Profile.objects.all()
-        serializer = ProfileSerializer(queryset, many=True)
-        return Response(serializer.data)
+    except Profile.DoesNotExist:
+        return Response({'error': 'No profiles found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Set up pagination for profiles
+    paginator = pagination.PageNumberPagination()
+    paginator.page_size = 10
+    paginator.page = page
+
+    # Create paginated profile list
+    paginated_profiles = paginator.paginate_queryset(queryset, request)
+    serializer = ProfileSerializer(paginated_profiles, many=True)
+    if serializer is not None:
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-class ProfileCreateView(views.APIView):
-    permission_classes = [permissions.AllowAny, ]
-
-    def post(self, request, username):
-        quiz = ProfileSerializer.create(self, request, username)
-
-        if quiz is not None:
-            return Response(status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_profile(request, username):
+    serializer = ProfileSerializer.create(request, username)
+    if serializer is not None:
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class ProfileRetrieveUpdateDestroyView(views.APIView):
-    permission_classes = [IsOwnerOrReadOnly, permissions.IsAdminUser]
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_profile_by_username(request, username):
+    profile = get_profile_object(username)
+    if profile is not None:
+        return Response(profile, status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def get_object(self, pk):
-        try:
-            return Profile.objects.get(pk=pk)
-        except Profile.DoesNotExist:
-            raise Exception('Profile does not exist')
 
-    def get(self, request, pk, format=None):
-        profile = self.get_object(pk)
-        serializer = ProfileSerializer(profile)
-
-        if serializer.is_valid():
-            user = User.objects.all(pk=serializer.data.user)
-            response_data = {}
-            response_data['bio'] = serializer.data.bio
-            response_data['profile_pic'] = serializer.data.profile_pic
-            response_data['username'] = user.username
-            response_data['email'] = user.email
-
-            return Response(response_data, status=status.HTTP_200_OK)
-        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    def put(self, request, pk, format=None):
-        profile = self.get_object(pk)
-        serializer = ProfileSerializer(profile, data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Profile successfully updaetd'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Unable to update profile'}, status=status.HTTP_404_NOT_FOUND)
-
-    def delete(self, request, pk, format=None):
-        profile = self.get_object(pk)
-
+@api_view(['PUT', 'DELETE'])
+@permission_classes([permissions.IsAdminUser, IsOwnerOrReadOnly])
+def update_delete_profile(request, username):
+    if request.method == 'PUT':
+        serializer = ProfileSerializer.update(request, username)
+        if serializer is not None:
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    elif request.method == 'DELETE':
+        profile = get_profile_object(username)
         if profile is not None:
             profile.delete()
-            return Response({'message': 'Profile successfully deleted'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Unable to delete profile'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    return Response(status=status.HTTP_400_BAD_REQUEST)

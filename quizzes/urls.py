@@ -12,7 +12,7 @@ urlpatterns = [
          get_quizzes_by_category, name='list'),
     path('quizzes/<int:page>/', quiz_list, name='quiz_list'),
     path('quizzes/', create_quiz, name='post_qgiuiz'),
-    path('quizzes/<int:pk>/', get_quiz, name='get_quiz'),
+    path('quizzes/quiz=<int:pk>/', get_quiz, name='get_quiz'),
     path('quizzes/modify/<int:pk>/', update_delete_quiz, name='modify'),
 ]
 urlpatterns += router.urls

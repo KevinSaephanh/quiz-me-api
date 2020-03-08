@@ -13,6 +13,23 @@ class ProfileSerializer(serializers.ModelSerializer):
         profile.save()
         return profile
 
+    def update(self, request, username):
+        data = request.data
+        profile = Profile()
+
+        # Update user info associated with profile
+        user = User.objects.get(username=username)
+        user.username = data['username']
+        user.email = data['email']
+        user.password = data['password']
+
+        # Update profile
+        profile.user = user
+        profile.bio = data['bio']
+        profile.profile_pic = data['profile_pic']
+        profile.save()
+        return profile
+
     class Meta:
         model = Profile
         fields = '__all__'

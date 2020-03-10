@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     'rest_auth',
     'rest_auth.registration',
     'quizzes',
-    'profiles'
+    'users'
 ]
 
 MIDDLEWARE = [
@@ -72,6 +72,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
         'rest_framework.permissions.IsAdminUser'
     ],
@@ -111,6 +112,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+AUTH_USER_MODEL = 'users.CustomUser'
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/

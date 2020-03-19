@@ -7,6 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('quizzes.urls')),
     path('api/users/', include('users.urls')),
+    path('api/rest-auth/', include('rest_auth.urls')),
     path('api/rest-auth/register/', include('rest_auth.registration.urls')),
     path('api/token-auth/', obtain_jwt_token),
     path('api/token-refresh/', refresh_jwt_token),

@@ -25,6 +25,7 @@ class CustomUser(AbstractUser):
     profile_pic = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'
 

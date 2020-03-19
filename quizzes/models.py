@@ -16,7 +16,7 @@ class Quiz(models.Model):
     creator = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE)
     title = models.CharField(
-        validators=[MinLengthValidator(1)], max_length=50, null=False)
+        validators=[MinLengthValidator(1)], max_length=50, null=False, unique=True)
     description = models.CharField(max_length=100, null=True, blank=True)
     category = models.ForeignKey(
         Category, on_delete=models.CASCADE, related_name="category")
@@ -25,10 +25,18 @@ class Quiz(models.Model):
     def __str__(self):
         return self.title
 
+    def get_questions(self):
+        questions = Question.objects.filter(quiz=self)
+        return questions
+
+    def get_votes(self):
+        votes = Vote.objects.filter(quiz=self)
+        return votes
+
 
 class Question(models.Model):
     quiz = models.ForeignKey(
-        Quiz, on_delete=models.CASCADE, related_name="quizzes", blank=True, null=False
+        Quiz, on_delete=models.CASCADE, related_name="quizzes", blank=True, null=True
     )
     question = models.TextField(
         validators=[MinLengthValidator(1)], max_length=250, blank=True, null=False)
@@ -45,4 +53,4 @@ class Vote(models.Model):
         CustomUser, on_delete=models.CASCADE)
     quiz = models.ForeignKey(
         Quiz, on_delete=models.CASCADE, blank=True, null=False)
-    user_vote = models.BooleanField()
+    user_vote = models.IntegerField(default=0)

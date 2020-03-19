@@ -1,12 +1,11 @@
 from django.shortcuts import render
-from rest_framework import viewsets, permissions, status, pagination
+from rest_framework import viewsets, views, permissions, status, pagination
 from rest_framework.decorators import permission_classes, api_view, authentication_classes
 from .models import CustomUser
 from .serializers import UserSerializer
 from quiz_me.permissions import IsOwnerOrReadOnly
 from requests.models import Response
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
-from _datetime import date
 
 
 @api_view(['GET'])
@@ -36,11 +35,6 @@ class UserViewSet(viewsets.ViewSet):
     permission_classes = [IsOwnerOrReadOnly]
     authentication_classes = [JSONWebTokenAuthentication]
 
-    def dispatch(self, request, *args, **kwargs):
-        if request.method == 'POST':
-            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        return super().dispatch(request, *args, **kwargs)
-
     # Used for retrieve, update, and destroy methods
     def get_queryset(self, pk):
         try:
@@ -58,17 +52,10 @@ class UserViewSet(viewsets.ViewSet):
 
     def update(self, request, pk):
         data = request.data
-        user = self.get_queryset(pk)
-        user.username = data['username']
-        user.email = data['email']
-        user.password = data['password']
-        user.bio = data['bio']
-        user.profile_pic = data['profile_pic']
-        user.updated_at = date.today()
-        user.save()
-
+        user = self.serializer_class.update(request, pk)
         serializer = self.serializer_class(user, data=request.data)
         if serializer is not None:
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_404_NOT_FOUND)
 

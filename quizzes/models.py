@@ -16,11 +16,12 @@ class Quiz(models.Model):
     creator = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE)
     title = models.CharField(
-        validators=[MinLengthValidator(1)], max_length=50, null=False, unique=True)
+        validators=[MinLengthValidator(5)], max_length=50, null=False, unique=True)
     description = models.CharField(max_length=100, null=True, blank=True)
     category = models.ForeignKey(
         Category, on_delete=models.CASCADE, related_name="category")
     created_at = models.DateTimeField(auto_now=True)
+    view_count = models.IntegerField(default=0)
 
     def __str__(self):
         return self.title

@@ -91,6 +91,11 @@ class RetrieveQuizByIdView(generics.RetrieveAPIView):
 
     def retrieve(self, request, pk):
         quiz = get_quiz_object(pk)
+
+        # Increment view count for quiz
+        quiz.view_count += 1
+        quiz.save()
+
         serializer = QuizDetailSerializer(quiz, many=False)
         if serializer is not None:
             return Response(serializer.data, status=status.HTTP_200_OK)

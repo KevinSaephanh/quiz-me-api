@@ -14,9 +14,9 @@ class CustomUser(AbstractUser):
             code='invalid_username'
         )], max_length=15, blank=True, null=False, unique=True)
     email = models.EmailField(
-        max_length=50, blank=True, null=False, unique=True)
+        max_length=150, blank=True, null=False, unique=True)
     password = models.CharField(
-        validators=[MinLengthValidator(7), RegexValidator(
+        validators=[MinLengthValidator(8), RegexValidator(
             regex='^(?=.*?[A-Z]).*\d',
             message='Password must have at least one number and one uppercase letter',
             code='invalid_password'

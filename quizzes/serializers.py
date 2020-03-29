@@ -87,7 +87,6 @@ class CreateQuizSerializer(serializers.ModelSerializer):
                     question.quiz = quiz
                     question.question = q['question']
                     question.answer = q['answer']
-                    question.explanation = q['explanation']
                     question.save()
         except IntegrityError:
             raise Exception('Failed to save all questions')

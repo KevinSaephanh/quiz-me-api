@@ -43,7 +43,6 @@ class Question(models.Model):
         validators=[MinLengthValidator(1)], max_length=250, blank=True, null=False)
     answer = models.TextField(
         validators=[MinLengthValidator(1)], max_length=250, blank=True, null=False)
-    explanation = models.TextField(max_length=250, null=True, blank=True)
 
     def __str__(self):
         return self.question

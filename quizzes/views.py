@@ -4,24 +4,11 @@ from rest_framework import permissions, status, views, generics, viewsets, mixin
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 from rest_framework.throttling import UserRateThrottle
-from .models import Category, Quiz, Vote
-from .serializers import QuizDetailSerializer, CreateQuizSerializer, QuizGetByTitleSerializer, QuestionSerializer, VoteSerializer, CategorySerializer
+from .models import Category, Quiz
+from .serializers import QuizDetailSerializer, CreateQuizSerializer, QuizGetByTitleSerializer, QuestionSerializer, CategorySerializer
 from rest_framework.response import Response
 from quiz_me.permissions import IsOwnerOrReadOnly
 
-
-class VoteViewSet(viewsets.ModelViewSet):
-    queryset = Vote.objects.all()
-    serializer_class = VoteSerializer
-    permission_classes = [IsOwnerOrReadOnly, permissions.IsAdminUser]
-    pagination_class = pagination.PageNumberPagination
-
-    def create(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer is not None:
-            serializer.create(request)
-            return Response(status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):

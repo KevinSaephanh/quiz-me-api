@@ -1,10 +1,9 @@
 from rest_framework.routers import DefaultRouter
 
-from .views import CreateQuizView, VoteViewSet, CategoryViewSet, get_quizzes_by_category, quiz_list, RetrieveQuizByIdView, RetrieveQuizByTitleView, UpdateDestroyQuizView
+from .views import CreateQuizView, CategoryViewSet, get_quizzes_by_category, quiz_list, RetrieveQuizByIdView, RetrieveQuizByTitleView, UpdateDestroyQuizView
 from django.urls import path
 
 router = DefaultRouter()
-router.register(r'votes', VoteViewSet, basename='votes')
 router.register(r'categories', CategoryViewSet, basename='categories')
 
 

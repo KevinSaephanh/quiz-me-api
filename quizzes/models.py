@@ -30,10 +30,6 @@ class Quiz(models.Model):
         questions = Question.objects.filter(quiz=self)
         return questions
 
-    def get_votes(self):
-        votes = Vote.objects.filter(quiz=self)
-        return votes
-
 
 class Question(models.Model):
     quiz = models.ForeignKey(
@@ -46,11 +42,3 @@ class Question(models.Model):
 
     def __str__(self):
         return self.question
-
-
-class Vote(models.Model):
-    user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE)
-    quiz = models.ForeignKey(
-        Quiz, on_delete=models.CASCADE, blank=True, null=False)
-    user_vote = models.IntegerField(default=0)
